@@ -1,136 +1,83 @@
 import ImageCard from "@/components/common/ImageCard";
-import { ImageProps } from "@/interfaces";
-import { useState } from "react";
+import React, { useState } from "react";
 
 const Home: React.FC = () => {
     const [prompt, setPrompt] = useState<string>("");
-    const [generatedImages, setGeneratedImages] = useState<ImageProps[]>([]);
+    const [imageUrl, setImageUrl] = useState<string>("");
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const handleGenerateImage = async () => {
-    try {
-        console.log("Generating Image - function started");
-        console.log("API Key:", process.env.NEXT_PUBLIC_GPT_API_KEY);
-        
         if (!prompt.trim()) {
             alert("Please enter a prompt!");
             return;
         }
 
-        console.log("Prompt being sent:", prompt);
         setIsLoading(true);
+        
+        try {
+            const resp = await fetch('/api/generate-image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt: prompt
+                })
+            });
 
-        // Simulate API call
-        setTimeout(() => {
+            const data = await resp.json();
+            setImageUrl(data.message);
+            console.log("Image generated successfully:", data.message);
+            
+        } catch (error) {
+            console.error("Error generating image:", error);
+            
+            // Fallback to placeholder image
             const randomId = Math.floor(Math.random() * 1000);
-            const newImage: ImageProps = {
-                imageUrl: `https://picsum.photos/400/300?random=${randomId}`,
-                prompt: prompt,
-            };
-
-            setGeneratedImages(prev => [newImage, ...prev]);
-            setPrompt("");
+            setImageUrl(`https://picsum.photos/600/400?random=${randomId}`);
+        } finally {
             setIsLoading(false);
-            console.log("Image generated successfully:", newImage.imageUrl);
-        }, 1500);
-    } catch (error) {
-        console.error("Error in handleGenerateImage:", error);
-        setIsLoading(false);
-    }
-};
+        }
+    };
 
-    const handleImageClick = (imageUrl: string) => {
-        console.log("Opening image in new tab:", imageUrl);
-        window.open(imageUrl, '_blank');
+    const handleImageClick = (imagePath: string) => {
+        window.open(imagePath, '_blank');
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !isLoading) {
             handleGenerateImage();
         }
     };
 
     return (
         <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4">
-            <div className="w-full max-w-4xl">
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold mb-2">Image Generation App</h1>
-                    <p className="text-lg text-gray-700 mb-4">
-                        Generate stunning images based on your prompts!
-                    </p>
+            <div className="flex flex-col items-center">
+                <h1 className="text-4xl font-bold mb-2">Image Generation App</h1>
+                <p className="text-lg text-gray-700 mb-4">
+                    Generate stunning images based on your prompts!
+                </p>
+
+                <div className="w-full max-w-md">
+                    <input
+                        type="text"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Enter your prompt here..."
+                        className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+                        disabled={isLoading}
+                    />
+                    <button
+                        onClick={handleGenerateImage}
+                        disabled={isLoading}
+                        className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+                    >
+                        {isLoading ? "Loading..." : "Generate Image"}
+                    </button>
                 </div>
 
-                {/* Input Section */}
-                <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <input
-                            type="text"
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Enter your prompt here (e.g., 'A sunset over mountains')..."
-                            className="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            disabled={isLoading}
-                        />
-                        <button
-                            onClick={handleGenerateImage}
-                            disabled={isLoading}
-                            className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
-                        >
-                            {isLoading ? (
-                                <div className="flex items-center justify-center">
-                                    <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Generating...
-                                </div>
-                            ) : "Generate Image"}
-                        </button>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                        Press Enter to generate or click the button. Check browser console for logs.
-                    </p>
-                </div>
-
-                {/* Generated Images Section */}
-                <div>
-                    <h2 className="text-2xl font-bold mb-4">Generated Images ({generatedImages.length})</h2>
-                    
-                    {generatedImages.length === 0 ? (
-                        <div className="text-center py-12 bg-white rounded-lg shadow">
-                            <p className="text-gray-500">No images generated yet. Enter a prompt above to get started!</p>
-                            <p className="text-sm text-gray-400 mt-2">
-                                Click "Generate Image" and check browser console (F12 → Console tab)
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {generatedImages.map((image, index) => (
-                                <ImageCard
-                                    key={index}
-                                    imageUrl={image.imageUrl}
-                                    prompt={image.prompt}
-                                    action={handleImageClick}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Console Debug Info */}
-                <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <h3 className="text-lg font-semibold text-yellow-800">Debug Information</h3>
-                    <p className="text-sm text-yellow-700 mt-1">
-                        Open browser DevTools (F12) → Console tab to see the logs when you click "Generate Image"
-                    </p>
-                    <ul className="text-xs text-yellow-600 mt-2 list-disc list-inside">
-                        <li>Will log: "Generating Image"</li>
-                        <li>Will log: Your API key from .env.local file</li>
-                        <li>Will log: The prompt being sent</li>
-                        <li>Will log: When image generation is complete</li>
-                    </ul>
-                </div>
+                {imageUrl && <ImageCard action={() => handleImageClick(imageUrl)} imageUrl={imageUrl} prompt={prompt} />}
             </div>
         </div>
     );
